@@ -1,0 +1,17 @@
+{
+  "name": "colorix",
+  "description": "Prototype for Arduino 1D game.",
+  "main": "app.js",
+  "authors": [
+    "Anders Weijnitz"
+  ],
+  "license": "MIT",
+  "homepage": "",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
+}
