@@ -4,18 +4,35 @@
 //
 
 const NR_GAME_PIXELS = 512;
-const DEVICE_PIXELS_PER_GAME_PIXEL = 5;
 
 const PLAYER_SEGMENTS = 3; // works as number of lives
-const PIXELS_PER_SEGMENT = 1; // In game pixels (model pixels)
+const PIXELS_PER_SEGMENT = 5; // In game pixels (model pixels)
+
+// Viewport
+const VIEW_WIDTH = 300;
+const VIEW_HEIGHT = 600;
+const VIEW_PIXEL_RADIUS = 3;
+const VIEW_TO_MODEL_RATIO = VIEW_HEIGHT / NR_GAME_PIXELS; // Gives the number of view pixels per game pixel
 
 
 // START MODEL
 //
 
-let dyModel = -1*(NR_GAME_PIXELS * 0.003);
+let vyModel = -1 * (NR_GAME_PIXELS * 0.003); // Model pixels per second
 let ledStrip = makeStrip(NR_GAME_PIXELS);
 let player = makePlayer(PLAYER_SEGMENTS, PIXELS_PER_SEGMENT);
+
+function updateModel(dt) {
+    // dt is the elapsedMS since last call
+
+    dt = dt / 1000; // convert ms to seconds
+    let ds = vyModel * dt;
+
+    player.forEach(p => {
+        p[0] += ds;
+        //p[1] = animateColor(p[1], dt);
+    });
+}
 
 function makeGamePixel(pos, color) {
     return [pos, color];
@@ -41,11 +58,6 @@ function makePlayer(segments, nrPixelsPerSegment) {
 }
 
 // END MODEL
-
-// Viewport
-const VIEW_WIDTH = 300;
-const VIEW_HEIGHT = 600;
-const VIEW_PIXEL_RADIUS = 2;
 
 
 const app = new PIXI.Application({
@@ -87,7 +99,6 @@ space.press = () => {
 };
 
 
-
 document.getElementById('viewport').appendChild(app.view);
 
 
@@ -112,13 +123,18 @@ function setup() {
 
 function gameLoop(delta) {
 
-    //Update the current game state:
     state(delta);
 }
 
 
 function play(delta) {
 
+    // UPDATE STATE
+    //
+    updateModel(app.ticker.elapsedMS);
+
+    // DRAW
+    //
     viewportPlayerArray.forEach((item, i) => {
 
         if (item.y > 10)
@@ -158,12 +174,18 @@ function toViewportPlayer(app, playerGamePixels) {
     let r = VIEW_PIXEL_RADIUS;
     let count = 0;
 
+    let devicePixelsPerModelPixel = Math.floor(VIEW_TO_MODEL_RATIO);
+    if (devicePixelsPerModelPixel < 1) devicePixelsPerModelPixel = 1;
+
+    console.log('devicePixelsPerModelPixel ', devicePixelsPerModelPixel);
+
     for (let i = 0; i < playerGamePixels.length; i++) {
-        for (let j = 0; j < DEVICE_PIXELS_PER_GAME_PIXEL; j++) {
+//        for (let j = 0; j < devicePixelsPerModelPixel; j++) {
 
             let circle = new PIXI.Graphics();
-            console.log('push', i, j);
-            i === (playerGamePixels.length - 1) && j === (DEVICE_PIXELS_PER_GAME_PIXEL - 1)  ? circle.beginFill(0xffee00) : circle.beginFill(playerGamePixels[i][1]);
+            console.log('push', i);
+            i === (playerGamePixels.length - 1) ?
+                circle.beginFill(0xffee00) : circle.beginFill(playerGamePixels[i][1]);
             circle.drawCircle(0, 0, r);
             circle.endFill();
             circle.x = VIEW_WIDTH >> 1;
@@ -171,7 +193,7 @@ function toViewportPlayer(app, playerGamePixels) {
             playerViewportPixles.push(circle);
             app.stage.addChild(circle);
 
-        }
+ //       }
     }
 
     return playerViewportPixles;
