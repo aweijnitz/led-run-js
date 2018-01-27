@@ -3,7 +3,7 @@
 // Game constants
 //
 
-const NR_GAME_PIXELS = 512;
+const NR_GAME_PIXELS = 1000;
 
 const PLAYER_SEGMENTS = 3; // works as number of lives
 const PIXELS_PER_SEGMENT = 5; // In game pixels (model pixels)
@@ -18,20 +18,67 @@ const VIEW_TO_MODEL_RATIO = VIEW_HEIGHT / NR_GAME_PIXELS; // Gives the number of
 // START MODEL
 //
 
-let vyModel = -1 * (NR_GAME_PIXELS * 0.003); // Model pixels per second
-let ledStrip = makeStrip(NR_GAME_PIXELS);
+let playerSpeed = -1 * (NR_GAME_PIXELS * 0.05); // Model pixels per second
+let enemySpeed = (NR_GAME_PIXELS * 0.045); // Model pixels per second
+//let ledStrip = makeStrip(NR_GAME_PIXELS);
 let player = makePlayer(PLAYER_SEGMENTS, PIXELS_PER_SEGMENT);
+let elapsedLevelTimeMS = 0;
+let currentLevel = 0;
+let nextEnemy = 0;
+let enemiesInFlight = []; // array of arrays. [color, pos, speed]
 
 function updateModel(dt) {
     // dt is the elapsedMS since last call
 
+    elapsedLevelTimeMS += dt;
+
+    updateEnemies(dt, elapsedLevelTimeMS);
+    updatePlayer(dt);
+
+
+}
+
+function updatePlayer(dt) {
     dt = dt / 1000; // convert ms to seconds
-    let ds = vyModel * dt;
+    let ds = playerSpeed * dt;
 
     player.forEach(p => {
         p[0] += ds;
         //p[1] = animateColor(p[1], dt);
+        //if(p[0] < 1)
+        //  console.log('LEVEL COMPLETE');
     });
+}
+
+function updateEnemies(dt, elapsedLevelTimeMS) {
+
+    // Move on-screen enemies
+    //
+    dt = dt / 1000; // convert ms to seconds
+    let ds = playerSpeed * dt;
+    enemiesInFlight.forEach(enemy => { // [color, pos, speed]
+        enemy[1] += enemy[2] * dt;
+    });
+
+    // Check if new enemies should enter the stage
+    //
+
+    // Note the order of the comparison is significant here, in order to prevent array-out-of-bounds
+    if (nextEnemy < levels[currentLevel].length && elapsedLevelTimeMS > levels[currentLevel][nextEnemy][1]) {
+        console.log('LAUNCH ENEMY ' + nextEnemy, levels[currentLevel][nextEnemy]);
+        // MODEL
+        addEnemyInFlight(levels[currentLevel][nextEnemy]);
+        // VIEW
+        addEnemyToStage(levels[currentLevel][nextEnemy]);
+
+        nextEnemy++;
+    }
+}
+
+function addEnemyInFlight(enemy) {
+    let startPos = 0;
+    enemiesInFlight.push([enemy[0], startPos, enemySpeed]);
+    console.log('ENEMY ENTERED')
 }
 
 function makeGamePixel(pos, color) {
@@ -54,7 +101,7 @@ function makePlayer(segments, nrPixelsPerSegment) {
             playerArray[index++] = makeGamePixel(index, color);
         }
     }
-    return playerArray;
+    return playerArray.reverse();
 }
 
 // END MODEL
@@ -104,6 +151,8 @@ document.getElementById('viewport').appendChild(app.view);
 
 let state;
 let viewportPlayerArray;
+let viewportEnemiesOnStage = [];
+
 
 // SETUP
 //
@@ -135,11 +184,11 @@ function play(delta) {
 
     // DRAW
     //
+    modelToViewUpdatePlayer(player, viewportPlayerArray);
+    modelToViewUpdateEnemies(enemiesInFlight);
     viewportPlayerArray.forEach((item, i) => {
 
-        if (item.y > 10)
-            item.y -= 1.5;
-        else
+        if (item.y < 10)
             app.stop();
     });
 
@@ -148,7 +197,12 @@ function play(delta) {
 
 function drawVerticalStrip(app, middleX, width, height) {
     let color = 0x9a9a9a;
-    let lineWidth = 0.5;
+
+    let devicePixelsPerModelPixel = Math.floor(VIEW_TO_MODEL_RATIO);
+    if (devicePixelsPerModelPixel < 1) devicePixelsPerModelPixel = 1;
+    width = width * devicePixelsPerModelPixel;
+
+    let lineWidth = 0.5 * devicePixelsPerModelPixel;
     let alpha = 1;
 
     let line = new PIXI.Graphics();
@@ -168,35 +222,90 @@ function drawVerticalStrip(app, middleX, width, height) {
     app.stage.addChild(line);
 }
 
+// enemy -> [RED, 1.0 * MILLIS]
+function addEnemyToStage(enemy) {
+    let enemyPixels = [];
+    let color = enemy[0];
+
+    let devicePixelsPerModelPixel = Math.floor(VIEW_TO_MODEL_RATIO);
+    if (devicePixelsPerModelPixel < 1) devicePixelsPerModelPixel = 1;
+    let r = VIEW_PIXEL_RADIUS * devicePixelsPerModelPixel;
+    let spacer = 1.2 * devicePixelsPerModelPixel;
+
+    console.log('devicePixelsPerModelPixel ', devicePixelsPerModelPixel);
+
+
+    for (let i = 0; i < 3; i++) {
+        let circle = new PIXI.Graphics();
+        circle.beginFill(color);
+        circle.drawCircle(0, 0, r);
+        circle.endFill();
+        circle.x = VIEW_WIDTH >> 1;
+        circle.y = -1 * (2 * r * spacer * i) * devicePixelsPerModelPixel;
+        //console.log('segment ', -1 * (2 * r * spacer * i));
+        enemyPixels.push(circle);
+        app.stage.addChild(circle);
+    }
+    viewportEnemiesOnStage.push(enemyPixels);
+    return enemyPixels;
+}
+
+function modelToViewUpdateEnemies(enemiesInFlight) {
+    let devicePixelsPerModelPixel = Math.floor(VIEW_TO_MODEL_RATIO);
+    if (devicePixelsPerModelPixel < 1) devicePixelsPerModelPixel = 1;
+
+    let spacer = 1.2 * devicePixelsPerModelPixel;
+    let r = VIEW_PIXEL_RADIUS;
+
+    enemiesInFlight.forEach((modelEnemy, i) => {
+        let viewEnemy = viewportEnemiesOnStage[i];
+        viewEnemy.forEach((circle, j) => {
+            circle.y = modelEnemy[1] * devicePixelsPerModelPixel + (2 * r * spacer * j);
+            //console.log(viewEnemy[1]);
+        });
+    });
+
+}
 
 function toViewportPlayer(app, playerGamePixels) {
     let playerViewportPixles = [];
-    let r = VIEW_PIXEL_RADIUS;
-    let count = 0;
+
+    let devicePixelsPerModelPixel = Math.floor(VIEW_TO_MODEL_RATIO);
+    if (devicePixelsPerModelPixel < 1) devicePixelsPerModelPixel = 1;
+    let r = VIEW_PIXEL_RADIUS * devicePixelsPerModelPixel;
+    let spacer = 1.2 * devicePixelsPerModelPixel;
+
+    console.log('devicePixelsPerModelPixel ', devicePixelsPerModelPixel);
+
+
+    for (let i = 0; i < playerGamePixels.length; i++) {
+        let circle = new PIXI.Graphics();
+        // console.log('push', i);
+        i === 0 ?
+            circle.beginFill(0xffee00) : circle.beginFill(playerGamePixels[i][1]);
+        circle.drawCircle(0, 0, r);
+        circle.endFill();
+        circle.x = VIEW_WIDTH >> 1;
+        circle.y = VIEW_HEIGHT - (2 * r * spacer * i);
+        playerViewportPixles.push(circle);
+        app.stage.addChild(circle);
+    }
+
+    return playerViewportPixles.reverse();
+}
+
+function modelToViewUpdatePlayer(player, playerGamePixels) {
 
     let devicePixelsPerModelPixel = Math.floor(VIEW_TO_MODEL_RATIO);
     if (devicePixelsPerModelPixel < 1) devicePixelsPerModelPixel = 1;
 
-    console.log('devicePixelsPerModelPixel ', devicePixelsPerModelPixel);
+    let spacer = 1.2 * devicePixelsPerModelPixel;
+    let r = VIEW_PIXEL_RADIUS;
 
-    for (let i = 0; i < playerGamePixels.length; i++) {
-//        for (let j = 0; j < devicePixelsPerModelPixel; j++) {
-
-            let circle = new PIXI.Graphics();
-            console.log('push', i);
-            i === (playerGamePixels.length - 1) ?
-                circle.beginFill(0xffee00) : circle.beginFill(playerGamePixels[i][1]);
-            circle.drawCircle(0, 0, r);
-            circle.endFill();
-            circle.x = VIEW_WIDTH >> 1;
-            circle.y = VIEW_HEIGHT - (2 * r * 1.2 * count++);
-            playerViewportPixles.push(circle);
-            app.stage.addChild(circle);
-
- //       }
+    for (let i = 0; i < player.length; i++) {
+        let circle = playerGamePixels[i];
+        circle.y = player[i][0] + VIEW_HEIGHT - (2 * r * spacer * i);
     }
-
-    return playerViewportPixles;
 }
 
 setup();
