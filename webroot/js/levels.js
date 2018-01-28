@@ -6,7 +6,7 @@ const MILLIS = 1000;
 
 let levels = [
     [
-        [RED, 0.1 * MILLIS], [BLUE, 1.9 * MILLIS], [GREEN, 5.8 * MILLIS]
+        [RED, 0.1 * MILLIS], [BLUE, 1.9 * MILLIS], [GREEN, 8.8 * MILLIS]
     ],
     [
         [YELLOW, 1 * MILLIS], [BLUE, 2.5 * MILLIS], [BLUE, 3 * MILLIS]
