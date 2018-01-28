@@ -34,6 +34,7 @@ let currentLevel = 0;
 let nextEnemy = 0;
 let enemiesInFlight = []; // array of arrays. [color, pos, speed]
 let collidedEnemies = []; // Player and an enemy can only collide once. This prevents double collisions
+let isGameOver = false;
 
 
 function updateModel(dt) {
@@ -44,14 +45,29 @@ function updateModel(dt) {
     updateEnemies(dt, elapsedLevelTimeMS);
     updatePlayer(dt);
 
+    // Check collisions
     enemiesInFlight.forEach((enemy, index) => {
         if (isCollision(player, enemy, index) && playerColors[currentPlayerColor] != enemy[0]) {
-            console.log('Collision!');
             if (!removeSegment(player))
-                app.stop(); // Game over
+                isGameOver = gameOver();
         }
     });
 
+    // Check level completed
+    if (!isGameOver && player[0][0] <= 10)
+        levelComplete(currentLevel);
+
+}
+
+function gameOver() {
+    app.stop();
+    console.log('GAME OVER');
+    return true;
+}
+
+function levelComplete(level) {
+    app.stop();
+    console.log('LEVEL COMPLETE');
 }
 
 function updatePlayer(dt) {
@@ -94,7 +110,7 @@ function updateEnemies(dt, elapsedLevelTimeMS) {
 function addEnemyInFlight(enemy) {
     let startPos = 0;
     enemiesInFlight.push([enemy[0], startPos, enemySpeed]);
-    console.log('ENEMY ENTERED')
+    console.log('ENEMY ENTERED ', enemy[0].toString(16));
 }
 
 function makeGamePixel(pos, color) {
@@ -103,10 +119,11 @@ function makeGamePixel(pos, color) {
 
 
 function isCollision(player, enemy, enemyIndex) {
+    //console.log('isCollision ', player, enemy, enemyIndex);
     let result = false;
     let threshold = 1;
 
-    if (collidedEnemies.indexOf(enemyIndex) >= 0) return false;
+    if (collidedEnemies.indexOf(enemyIndex) >= 0 || player.length == 0) return false;
 
     if (Math.abs(player[0][0] - enemy[1]) < threshold) {
         collidedEnemies.push(enemyIndex);
@@ -124,7 +141,8 @@ function removeSegment(player) {
     for (let i = 0; i < PIXELS_PER_SEGMENT; i++)
         player.pop();
 
-    if (player.length <= 0) result = false;
+    if (player.length <= 0)
+        result = false;
 
     return result;
 
@@ -150,7 +168,7 @@ function increasePlayerColor() {
 
 function decreasePlayerColor() {
     currentPlayerColor--;
-    if(currentPlayerColor < 0)
+    if (currentPlayerColor < 0)
         currentPlayerColor += playerColors.length;
 }
 
@@ -232,11 +250,13 @@ function play(delta) {
     trimPlayerSegments(player); // Update view, based on model changes
     renderPlayer(player, viewportPlayerArray);
     renderEnemies(enemiesInFlight);
-    viewportPlayerArray.forEach((item, i) => {
+    /*
+        viewportPlayerArray.forEach((item, i) => {
 
-        if (item.y < 10)
-            app.stop();
-    });
+            if (item.y < 10)
+                app.stop();
+        });
+        */
 
 }
 
