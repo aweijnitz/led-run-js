@@ -1,5 +1,4 @@
-
-function keyboard(keyCode) {
+export default function keyboard(keyCode) {
     let key = {};
     key.code = keyCode;
     key.isDown = false;

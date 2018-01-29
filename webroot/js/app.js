@@ -3,6 +3,9 @@
 // Game constants
 //
 
+import {RED, GREEN, BLUE, YELLOW, levels} from './levels.js';
+import keyboard from './keyboardHandler';
+
 const NR_GAME_PIXELS = 1000;
 
 const PLAYER_SEGMENTS = 3; // works as number of lives
@@ -22,11 +25,11 @@ let viewportEnemiesOnStage = [];
 // START MODEL
 //
 
-let playerSpeed = -1 * (NR_GAME_PIXELS * 0.05); // Model pixels per second
+let playerSpeed = -1 * (NR_GAME_PIXELS * 0.06); // Model pixels per second
 let enemySpeed = (NR_GAME_PIXELS * 0.045); // Model pixels per second
 //let ledStrip = makeStrip(NR_GAME_PIXELS);
-let player = makePlayer(PLAYER_SEGMENTS, PIXELS_PER_SEGMENT);
-const playerColors = [RED, GREEN, BLUE];
+let player = initializePlayer(PLAYER_SEGMENTS, PIXELS_PER_SEGMENT);
+const playerColors = [RED, GREEN, BLUE, YELLOW];
 let currentPlayerColor = 0;
 
 let elapsedLevelTimeMS = 0;
@@ -62,12 +65,34 @@ function updateModel(dt) {
 function gameOver() {
     app.stop();
     console.log('GAME OVER');
+
+    enemiesInFlight = [];
+
     return true;
 }
 
 function levelComplete(level) {
-    app.stop();
     console.log('LEVEL COMPLETE');
+
+    app.stop();
+    clearView();
+
+    playerSpeed *= 1.2;
+    elapsedLevelTimeMS = 0;
+    currentPlayerColor = 0;
+    player = initializePlayer(PLAYER_SEGMENTS, PIXELS_PER_SEGMENT);
+    enemiesInFlight = [];
+    collidedEnemies = [];
+    nextEnemy = 0;
+    currentLevel++;
+    if(currentLevel >= levels.length) {
+        isGameOver = gameOver();
+        app.stop();
+        console.log('GAME COMPLETED! GAME OVER');
+    }
+    viewportPlayerArray = renderPlayerFirstTime(app, player);
+    viewportEnemiesOnStage = [];
+    app.start();
 }
 
 function updatePlayer(dt) {
@@ -77,8 +102,6 @@ function updatePlayer(dt) {
     player.forEach(p => {
         p[0] += ds;
         //p[1] = animateColor(p[1], dt);
-        //if(p[0] < 1)
-        //  console.log('LEVEL COMPLETE');
     });
 }
 
@@ -96,7 +119,7 @@ function updateEnemies(dt, elapsedLevelTimeMS) {
     //
 
     // Note the order of the comparison is significant here, in order to prevent array-out-of-bounds
-    if (nextEnemy < levels[currentLevel].length && elapsedLevelTimeMS > levels[currentLevel][nextEnemy][1]) {
+    if (!isGameOver && nextEnemy < levels[currentLevel].length && elapsedLevelTimeMS > levels[currentLevel][nextEnemy][1]) {
         console.log('LAUNCH ENEMY ' + nextEnemy, levels[currentLevel][nextEnemy]);
         // MODEL
         addEnemyInFlight(levels[currentLevel][nextEnemy]);
@@ -148,7 +171,7 @@ function removeSegment(player) {
 
 }
 
-function makePlayer(segments, pixelsPerSegment) {
+function initializePlayer(segments, pixelsPerSegment) {
     let playerArray = [];
     let color = 0xaa0000;
     let index = 0;
@@ -250,16 +273,20 @@ function play(delta) {
     trimPlayerSegments(player); // Update view, based on model changes
     renderPlayer(player, viewportPlayerArray);
     renderEnemies(enemiesInFlight);
-    /*
-        viewportPlayerArray.forEach((item, i) => {
-
-            if (item.y < 10)
-                app.stop();
-        });
-        */
 
 }
 
+function clearView() {
+    viewportPlayerArray.forEach((item) => {
+        app.stage.removeChild(item);
+    });
+
+    viewportEnemiesOnStage.forEach(enemy => {
+        enemy.forEach(circle => {
+            app.stage.removeChild(circle);
+        })
+    })
+}
 
 function trimPlayerSegments(player) {
 
