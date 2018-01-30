@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/colorix-js.iml" filepath="$PROJECT_DIR$/.idea/colorix-js.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../led-run-js/.idea/led-run-js.iml" filepath="$PROJECT_DIR$/../led-run-js/.idea/led-run-js.iml" />
     </modules>
   </component>
 </project>

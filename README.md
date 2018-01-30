@@ -1,5 +1,5 @@
-# colorix-js 
-An Arduino 1D game prototype.
+# led-run-js 
+An Arduino 1D game prototyped in a browser environment.
 
 ## Setup
    
